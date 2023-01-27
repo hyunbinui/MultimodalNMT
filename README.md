@@ -2,7 +2,7 @@
 
 This is the actual implementation of [MultimodalNMT](https://github.com/iacercalixto/MultimodalNMT). Before jumping right into the implementation, note that the original repo is somewhat outdated and based on a \*very\* old version of [OpenNMT-py](https://github.com/OpenNMT/OpenNMT-py).  
   
-( By the way, you can find the original README.md [here](#original) )
+( You can find the original README.md [here](#original), just in case. )
   
 ---  
 

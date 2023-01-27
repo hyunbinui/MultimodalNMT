@@ -11,6 +11,8 @@ import random
 import torch
 import torch.nn as nn
 from torch import cuda
+from torch.utils.tensorboard import SummaryWriter
+writer = SummaryWriter()
 
 import onmt
 import onmt.io
@@ -54,10 +56,10 @@ if torch.cuda.is_available() and not opt.gpuid:
     print("WARNING: You have a CUDA device, should run with -gpuid 0")
 
 if opt.gpuid:
-    cuda.set_device(opt.gpuid[0])
+    torch.cuda.device(opt.gpuid[0])
     if opt.seed > 0:
         torch.cuda.manual_seed(opt.seed)
-
+ 
 if len(opt.gpuid) > 1:
     sys.stderr.write("Sorry, multigpu isn't supported yet, coming soon!\n")
     sys.exit(1)
@@ -109,7 +111,6 @@ def report_func(epoch, batch, num_batches,
         if opt.exp_host:
             report_stats.log("progress", experiment, lr)
         report_stats = onmt.Statistics()
-
     return report_stats
 
 
@@ -134,7 +135,6 @@ class DatasetLazyIter(object):
         self.batch_size_fn = batch_size_fn
         self.device = device
         self.is_train = is_train
-
         self.cur_iter = self._next_dataset_iterator(datasets)
         # We have at least one dataset.
         assert self.cur_iter is not None
@@ -188,7 +188,7 @@ def make_dataset_iter(datasets, fields, opt, is_train=True):
         def batch_size_fn(new, count, sofar):
             return sofar + max(len(new.tgt), len(new.src)) + 1
 
-    device = opt.gpuid[0] if opt.gpuid else -1
+    device = torch.device(opt.gpuid[0] if torch.cuda.is_available() else "cpu")
 
     return DatasetLazyIter(datasets, fields, batch_size, batch_size_fn,
                            device, is_train)
@@ -266,6 +266,15 @@ def train_model(model, fields, optim, data_type,
         # 5. Drop a checkpoint if needed.
         if epoch >= opt.start_checkpoint_at:
             trainer.drop_checkpoint(model_opt, epoch, fields, valid_stats)
+        
+        # 6. use tensorboard to record training logs
+        writer.add_scalar('train_ppl', train_stats.ppl(), epoch)
+        writer.add_scalar('train_acc', train_stats.accuracy(), epoch)
+        writer.add_scalar('valid_ppl', train_stats.ppl(), epoch)
+        writer.add_scalar('valid_acc', valid_stats.accuracy(), epoch)
+        
+        writer.flush()
+        writer.close()
 
 
 def check_save_model_path():
@@ -386,7 +395,7 @@ def build_optim(model, checkpoint):
 
     return optim
 
-
+ 
 def main():
     # start with loading the image features
     # open hdf5 file with the image features
@@ -401,6 +410,7 @@ def main():
         # load only the global image features
         train_img_feats = train_file.root.global_feats[:]
         valid_img_feats = valid_file.root.global_feats[:]
+        
 
     # close hdf5 file handlers
     train_file.close()
@@ -423,15 +433,12 @@ def main():
     first_dataset = next(lazily_load_dataset("train"))
     data_type = first_dataset.data_type
     print("data_type: ",data_type)
-
     # Load fields generated from preprocess phase.
     fields = load_fields(first_dataset, data_type, checkpoint)
-
     # Report src/tgt features.
-    collect_report_features(fields)
 
     # Build model.
-    model = build_model(model_opt, opt, fields, checkpoint)
+    model = build_model(model_opt, opt, fields, checkpoint).cuda()
     tally_parameters(model)
     check_save_model_path()
 

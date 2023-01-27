@@ -19,7 +19,8 @@ def get_cnn_features(image_list, split, batch_size, dataset_name, pretrained_cnn
         features into the hdf5 file.
     """
     # create hdf5 file
-    hdf5_path = "%s_%s_%s_%s" % (dataset_name, split, pretrained_cnn_name, "cnn_features.hdf5")
+    hdf5_path = "/data/IMT/dataset/"+"%s_%s_%s_%s" % (dataset_name, split, pretrained_cnn_name, "cnn_features.hdf5")
+    print(hdf5_path)
     hdf5_file = tables.open_file(hdf5_path, mode='w')
 
     # make sure feature sizes are as expected by underlying CNN architectures

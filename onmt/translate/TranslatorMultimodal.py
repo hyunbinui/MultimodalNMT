@@ -26,12 +26,12 @@ class TranslatorMultimodal(object):
     def __init__(self, model, fields,
                  beam_size, n_best=1,
                  max_length=100,
-                 global_scorer=None, copy_attn=False, cuda=False,
+                 global_scorer=None, copy_attn=False, cuda=True,
                  beam_trace=False, min_length=0,
                  test_img_feats=None, multimodal_model_type=None):
         self.model = model
         self.fields = fields
-        self.n_best = n_best
+        self.n_best = n_best 
         self.max_length = max_length
         self.global_scorer = global_scorer
         self.copy_attn = copy_attn
@@ -74,6 +74,7 @@ class TranslatorMultimodal(object):
         img_feats = torch.from_numpy( self.test_img_feats[sent_idx] )
         img_feats = torch.autograd.Variable(img_feats, requires_grad=False)
         img_feats = img_feats.unsqueeze(0)
+
         if next(self.model.parameters()).is_cuda:
             img_feats = img_feats.cuda()
         else:
@@ -231,7 +232,7 @@ class TranslatorMultimodal(object):
         ret = self._from_beam(beam)
         ret["gold_score"] = [0] * batch_size
         if "tgt" in batch.__dict__:
-            ret["gold_score"] = self._run_target(batch, data)
+            ret["gold_score"] = self._run_target(batch, data, sent_idx)
         ret["batch"] = batch
         return ret
 
@@ -260,7 +261,7 @@ class TranslatorMultimodal(object):
             src_lengths = None
         src = onmt.io.make_features(batch, 'src', data_type)
         tgt_in = onmt.io.make_features(batch, 'tgt')[:-1]
-
+        
         #  (1) run the encoder on the src
         #enc_states, context = self.model.encoder(src, src_lengths)
         #dec_states = self.model.decoder.init_decoder_state(src,
@@ -319,7 +320,7 @@ class TranslatorMultimodal(object):
                     tgt_in, context, img_proj, dec_states,
                     context_lengths=src_lengths)
         else:
-            raise Exception("Multi-modal odel type not implemented: %s"%(
+            raise Exception("Multi-modal model type not implemented: %s"%(
                 self.multimodal_model_type))
 
         tgt_pad = self.fields["tgt"].vocab.stoi[onmt.io.PAD_WORD]
@@ -328,6 +329,6 @@ class TranslatorMultimodal(object):
             out = self.model.generator.forward(dec)
             tgt = tgt.unsqueeze(1)
             scores = out.data.gather(1, tgt)
-            scores.masked_fill_(tgt.eq(tgt_pad), 0)
+            scores = scores.masked_fill_(tgt.eq(tgt_pad), 0).view(-1)
             gold_scores += scores
         return gold_scores

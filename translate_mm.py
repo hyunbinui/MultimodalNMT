@@ -55,9 +55,10 @@ def main():
     opts.model_opts(dummy_parser)
     dummy_opt = dummy_parser.parse_known_args([])[0]
 
-    opt.cuda = opt.gpu > -1
+    opt.cuda = opt.gpu >= -1
+
     if opt.cuda:
-        torch.cuda.set_device(opt.gpu)
+        torch.cuda.device('cuda:0' if torch.cuda.is_available() else "cpu")
     
     # loading checkpoint just to find multimodal model type
     checkpoint = torch.load(opt.model,
@@ -66,7 +67,7 @@ def main():
     del checkpoint
 
     if opt.batch_size > 1:
-        print "Batch size > 1 not implemented! Falling back to batch_size = 1 ..."
+        print("Batch size > 1 not implemented! Falling back to batch_size = 1 ...")
         opt.batch_size = 1
 
     # load test image features
@@ -84,6 +85,8 @@ def main():
         onmt.ModelConstructor.load_test_model(opt, dummy_opt.__dict__)
     #opt.multimodal_model_type = checkpoint['opt'].multimodal_model_type
 
+    model = model.cuda()
+    
     # File to write sentences to.
     out_file = codecs.open(opt.output, 'w', 'utf-8')
 
@@ -99,11 +102,13 @@ def main():
 
     # Sort batch by decreasing lengths of sentence required by pytorch.
     # sort=False means "Use dataset's sortkey instead of iterator's".
+    
+    device = torch.device('cuda:0' if torch.cuda.is_available() else "cpu")
+    
     data_iter = onmt.io.OrderedIterator(
-        dataset=data, device=opt.gpu,
+        dataset=data, device=device,
         batch_size=opt.batch_size, train=False, sort=False,
         sort_within_batch=True, shuffle=False)
-
     # Translator
     scorer = onmt.translate.GNMTGlobalScorer(opt.alpha, opt.beta)
     translator = onmt.translate.TranslatorMultimodal(model, fields,
@@ -112,7 +117,7 @@ def main():
                                            global_scorer=scorer,
                                            max_length=opt.max_length,
                                            copy_attn=model_opt.copy_attn,
-                                           cuda=opt.cuda,
+                                           cuda=True,
                                            beam_trace=opt.dump_beam != "",
                                            min_length=opt.min_length,
                                            test_img_feats=test_img_feats,
@@ -149,6 +154,7 @@ def main():
                 os.write(1, output.encode('utf-8'))
 
     _report_score('PRED', pred_score_total, pred_words_total)
+    
     if opt.tgt:
         _report_score('GOLD', gold_score_total, gold_words_total)
         if opt.report_bleu:

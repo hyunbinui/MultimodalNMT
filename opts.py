@@ -1,7 +1,6 @@
 import argparse
 from onmt.modules.SRU import CheckSRU
 
-
 def model_opts(parser):
     """
     These options are passed to the construction of the model.

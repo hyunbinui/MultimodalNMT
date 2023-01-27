@@ -3,7 +3,6 @@
 from itertools import chain
 import torchtext
 
-
 PAD_WORD = '<blank>'
 UNK_WORD = '<unk>'
 UNK = 0
@@ -11,7 +10,7 @@ BOS_WORD = '<s>'
 EOS_WORD = '</s>'
 
 
-class ONMTDatasetBase(torchtext.data.Dataset):
+class ONMTDatasetBase(torchtext.legacy.data.Dataset):
     """
     A dataset basically supports iteration over all the examples
     it contains. We currently have 3 datasets inheriting this base
@@ -57,8 +56,7 @@ class ONMTDatasetBase(torchtext.data.Dataset):
         """
         if not tokens:
             return [], [], -1
-
-        split_tokens = [token.split(u"￨") for token in tokens]
+        split_tokens = [token.split(u",") for token in tokens]
         split_tokens = [token for token in split_tokens if token[0]]
         token_size = len(split_tokens[0])
 
@@ -67,7 +65,7 @@ class ONMTDatasetBase(torchtext.data.Dataset):
         words_and_features = list(zip(*split_tokens))
         words = words_and_features[0]
         features = words_and_features[1:]
-
+        # print(f'{words} / {features} / {token_size}')
         return words, features, token_size - 1
 
     # Below are helper functions for intra-class use only.
@@ -107,7 +105,7 @@ class ONMTDatasetBase(torchtext.data.Dataset):
         Returns:
             the created `Example` object.
         """
-        ex = torchtext.data.Example()
+        ex = torchtext.legacy.data.Example()
         for (name, field), val in zip(fields, data):
             if field is not None:
                 setattr(ex, name, field.preprocess(val))

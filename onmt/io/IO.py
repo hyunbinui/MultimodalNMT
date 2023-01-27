@@ -4,7 +4,7 @@ from collections import Counter, defaultdict, OrderedDict
 from itertools import count
 
 import torch
-import torchtext.data
+import torchtext.legacy.data
 import torchtext.vocab
 
 from onmt.io.DatasetBase import UNK_WORD, PAD_WORD, BOS_WORD, EOS_WORD
@@ -323,17 +323,17 @@ def _make_examples_nfeats_tpl(data_type, src_path, src_dir,
                 normalize_audio)
 
     return src_examples_iter, num_src_feats
+ 
 
-
-class OrderedIterator(torchtext.data.Iterator):
+class OrderedIterator(torchtext.legacy.data.Iterator):
     def create_batches(self):
         if self.train:
-            self.batches = torchtext.data.pool(
+            self.batches = torchtext.legacy.data.pool(
                 self.data(), self.batch_size,
                 self.sort_key, self.batch_size_fn,
                 random_shuffler=self.random_shuffler)
         else:
             self.batches = []
-            for b in torchtext.data.batch(self.data(), self.batch_size,
+            for b in torchtext.legacy.data.batch(self.data(), self.batch_size,
                                           self.batch_size_fn):
                 self.batches.append(sorted(b, key=self.sort_key))

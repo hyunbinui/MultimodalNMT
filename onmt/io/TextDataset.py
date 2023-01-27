@@ -162,8 +162,7 @@ class TextDataset(ONMTDatasetBase):
                 if truncate:
                     line = line[:truncate]
 
-                words, feats, n_feats = \
-                    TextDataset.extract_text_features(line)
+                words, feats, n_feats = TextDataset.extract_text_features(line)
 
                 example_dict = {side: words, "indices": i}
                 if feats:
@@ -187,24 +186,25 @@ class TextDataset(ONMTDatasetBase):
         """
         fields = {}
 
-        fields["src"] = torchtext.data.Field(
+        fields["src"] = torchtext.legacy.data.Field(
             pad_token=PAD_WORD,
             include_lengths=True)
 
         for j in range(n_src_features):
             fields["src_feat_"+str(j)] = \
-                torchtext.data.Field(pad_token=PAD_WORD)
+                torchtext.legacy.data.Field(pad_token=PAD_WORD)
 
-        fields["tgt"] = torchtext.data.Field(
+        fields["tgt"] = torchtext.legacy.data.Field(
             init_token=BOS_WORD, eos_token=EOS_WORD,
             pad_token=PAD_WORD)
 
         for j in range(n_tgt_features):
             fields["tgt_feat_"+str(j)] = \
-                torchtext.data.Field(init_token=BOS_WORD, eos_token=EOS_WORD,
+                torchtext.legacy.data.Field(init_token=BOS_WORD, eos_token=EOS_WORD,
                                      pad_token=PAD_WORD)
 
-        def make_src(data, vocab, is_train):
+        # def make_src(data, vocab, is_train):
+        def make_src(data, vocab):
             src_size = max([t.size(0) for t in data])
             src_vocab_size = max([t.max() for t in data]) + 1
             alignment = torch.zeros(src_size, len(data), src_vocab_size)
@@ -213,23 +213,23 @@ class TextDataset(ONMTDatasetBase):
                     alignment[j, i, t] = 1
             return alignment
 
-        fields["src_map"] = torchtext.data.Field(
-            use_vocab=False, tensor_type=torch.FloatTensor,
+        fields["src_map"] = torchtext.legacy.data.Field(
+            use_vocab=False, dtype=torch.float,
             postprocessing=make_src, sequential=False)
 
-        def make_tgt(data, vocab, is_train):
+        def make_tgt(data, vocab):
             tgt_size = max([t.size(0) for t in data])
             alignment = torch.zeros(tgt_size, len(data)).long()
             for i, sent in enumerate(data):
                 alignment[:sent.size(0), i] = sent
             return alignment
 
-        fields["alignment"] = torchtext.data.Field(
-            use_vocab=False, tensor_type=torch.LongTensor,
+        fields["alignment"] = torchtext.legacy.data.Field(
+            use_vocab=False, dtype=torch.long,
             postprocessing=make_tgt, sequential=False)
 
-        fields["indices"] = torchtext.data.Field(
-            use_vocab=False, tensor_type=torch.LongTensor,
+        fields["indices"] = torchtext.legacy.data.Field(
+            use_vocab=False, dtype=torch.long,
             sequential=False)
 
         return fields
@@ -262,13 +262,13 @@ class TextDataset(ONMTDatasetBase):
             src_vocab = torchtext.vocab.Vocab(Counter(src))
             self.src_vocabs.append(src_vocab)
             # Mapping source tokens to indices in the dynamic dict.
-            src_map = torch.LongTensor([src_vocab.stoi[w] for w in src])
+            src_map = torch.LongTensor([src_vocab.__getitem__(w) for w in src])
             example["src_map"] = src_map
 
             if "tgt" in example:
                 tgt = example["tgt"]
                 mask = torch.LongTensor(
-                        [0] + [src_vocab.stoi[w] for w in tgt] + [0])
+                        [0] + [src_vocab.__getitem__(w) for w in tgt] + [0])
                 example["alignment"] = mask
             yield example
 

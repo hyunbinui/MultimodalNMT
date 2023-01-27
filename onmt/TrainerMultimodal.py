@@ -9,6 +9,7 @@ mechanism things here(i.e. what to do), and leave the strategy
 things to users(i.e. how to do it). Also see train.py(one of the
 users of this library) for the strategy things we do.
 """
+import os 
 import time
 import sys
 import math
@@ -62,7 +63,7 @@ class TrainerMultimodal(object):
         self.train_img_feats = train_img_feats
         self.valid_img_feats = valid_img_feats
         self.multimodal_model_type = multimodal_model_type
-
+        
         assert(not self.train_img_feats is None), \
                 'Must provide training image features!'
         assert(not self.valid_img_feats is None), \
@@ -225,6 +226,10 @@ class TrainerMultimodal(object):
             'epoch': epoch,
             'optim': self.optim,
         }
+        
+        if not os.path.isdir(opt.save_model):
+            os.mkdir(opt.save_model)
+        
         torch.save(checkpoint,
                    '%s_acc_%.2f_ppl_%.2f_e%d.pt'
                    % (opt.save_model, valid_stats.accuracy(),
@@ -238,6 +243,7 @@ class TrainerMultimodal(object):
         for batch in true_batchs:
             # extract indices for all entries in the mini-batch
             idxs = batch.indices.cpu().data.numpy()
+
             # load image features for this minibatch into a pytorch Variable
             img_feats = torch.from_numpy( self.train_img_feats[idxs] )
             img_feats = torch.autograd.Variable(img_feats, requires_grad=False)
